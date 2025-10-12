@@ -15,6 +15,12 @@ import math
 import sys
 from scipy.interpolate import interp1d
 from scipy.signal import correlate
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="AIzaSyBegRoTXaFwsjbEENHNFNqVpJ-uJmt-SHY",
+    base_url="https://generativelanguage.googleapis.com/v1beta/"
+)
 
 # Suppress TensorFlow / CREPE / matplotlib warnings and logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Hide TF debug logs
@@ -49,6 +55,15 @@ def plot_alignment(filtered_time_before, filtered_freq, filtered_time_after, gt_
     plt.tight_layout()
     plt.show()
 
+# reads MusicXML file and turns it into Score object with notes, rests, measures
+# score (object, hierarchical) contains Parts (instruments/voices)
+# each Part contains Measures
+# each Measure contains Notes or Rests
+score = converter.parse(mxl_file)
+
+# flatten hierarchical structure into a simple sequence (?)
+notes_and_rests = score.flat.notesAndRests
+
 
 # Load audio with librosa
 # reads audio file from disk, resamples to 16,000 hz
@@ -61,45 +76,65 @@ y, sr = librosa.load(audio_path, sr=16000)
 #          model_capacity='full' (highest accuracy CREPE model)
 time, frequency, confidence, activation = crepe.predict(y, sr, step_size=7, model_capacity='full')
 
-
-# adjust time for delay
-latency = 0.065
-adjusted_time = time - latency
-valid_idx = adjusted_time >= 0
-adjusted_time = adjusted_time[valid_idx]
-adjusted_freq = frequency[valid_idx]
-adjusted_conf = confidence[valid_idx]
+# TIME SHIFT
 
 # filter out values that are less confident
 threshold = 0.9
-filtered_time = adjusted_time[adjusted_conf > threshold]
-filtered_freq = adjusted_freq[adjusted_conf > threshold]
+confident_idx = confidence > threshold
+filtered_time = time[confident_idx]
+filtered_freq = frequency[confident_idx]
+filtered_conf = confidence[confident_idx]
+
+# # Find first confident prediction
+# first_conf_idx = np.argmax(confidence > 0.8)
+# first_conf_time = time[first_conf_idx]
+
+#get first note
+first_note = None
+for n in notes_and_rests:
+    if n.isRest or n.isChord:
+        continue
+    first_note = n
+    break
+
+first_note_freq = first_note.pitch.frequency
+first_note_start = (first_note.offset / tempo) * 60
+
+def cents_diff(f1, f2):
+    return 1200 * np.log2(f1 / f2)
+
+diff_cents = np.abs(cents_diff(filtered_freq, first_note_freq))
+# Find first index where CREPE freq is within 100 cents of first note
+match_idx = np.where(diff_cents <= 100)[0]
+
+if len(match_idx) == 0:
+    print("No prediction matched the first note.")
+else:
+    first_match_time = filtered_time[match_idx[0]]
+    print(f"First CREPE match for {first_note.nameWithOctave} at {first_match_time:.3f} s")
+
+
+filtered_time = filtered_time - first_match_time
+
+print(f"Shifted CREPE times so first note starts at 0 (shift = {first_match_time:.3f} sec)")
+
+# adjust so no zero values
+valid_idx = filtered_time >= 0
+adjusted_time = filtered_time[valid_idx]
+adjusted_freq = filtered_freq[valid_idx]
+adjusted_conf = filtered_conf[valid_idx]
+
+
 
 
 # Compare predicted frequencies to ground truth
 
-# reads MusicXML file and turns it into Score object with notes, rests, measures
-# score (object, hierarchical) contains Parts (instruments/voices)
-# each Part contains Measures
-# each Measure contains Notes or Rests
-score = converter.parse(mxl_file)
 
-# flatten hierarchical structure into a simple sequence (?)
-notes_and_rests = score.flat.notesAndRests
+# # Time alignment (shift CREPE predictions to best match ground truth)
+# gt_times_no_rests = []
+# gt_freqs_no_rests = []
 
-# Time alignment (shift CREPE predictions to best match ground truth)
-gt_times_no_rests = []
-gt_freqs_no_rests = []
 
-# TIME SHIFT
-# Find first confident prediction
-first_conf_idx = np.argmax(adjusted_conf > 0.95)
-first_conf_time = filtered_time[first_conf_idx]
-
-# Shift everything so that the first detected note = 0
-filtered_time = filtered_time - first_conf_time
-
-print(f"Shifted CREPE times so first note starts at 0 (shift = {-first_conf_time:.3f} sec)")
 
 
 # OLD TIME SHIFT CODE
@@ -206,24 +241,24 @@ note_freqs = []
 # Shifts the predicted frequency by octaves until it's closest to the target frequency.
 def correct_octave(pred_freq, target_freq):
     # If CREPE outputs 0 (silence), just return 0
-    if pred_freq <= 0:
-        return pred_freq
+    # if pred_freq <= 0:
+    #     return pred_freq
 
-    while pred_freq > target_freq * 4:
-        pred_freq /= 2
-    while pred_freq < target_freq / 4:
-        pred_freq *= 2
+    # while pred_freq > target_freq * 4:
+    #     pred_freq /= 2
+    # while pred_freq < target_freq / 4:
+    #     pred_freq *= 2
     return pred_freq
 
 
 def process_note_frequencies(pred_freqs, target_freq):
-    # apply correction to each CREPE prediction individually
-    corrected = [correct_octave(f, target_freq) for f in pred_freqs if f > 0]
+    # # apply correction to each CREPE prediction individually
+    # corrected = [correct_octave(f, target_freq) for f in pred_freqs if f > 0]
 
-    if not corrected:
-        return None
-    
-    return np.median(corrected)
+    # if not corrected:
+    #     return None
+    # # should be (corrected) if want to work
+    return np.median(pred_freqs)
 
 # n is one note (or chord) at a time
 for n in notes_and_rests:
@@ -244,15 +279,15 @@ for n in notes_and_rests:
     
     # get slice boundaries of CREPE frames that fall in note duration
     # finds first index where time >= note_start
-    start_idx = np.searchsorted(filtered_time, note_start, side='left')
+    start_idx = np.searchsorted(adjusted_time, note_start, side='left')
     # finds index after last time that is >= note_end
-    end_idx = np.searchsorted(filtered_time, note_end, side='right')
+    end_idx = np.searchsorted(adjusted_time, note_end, side='right')
 
     # slice frequency array to get all CREPE pitch values in note duration
-    freq_slice = (filtered_freq[start_idx:end_idx])
+    freq_slice = (adjusted_freq[start_idx:end_idx])
 
     # slice time
-    time_slice = filtered_time[start_idx:end_idx]
+    time_slice = adjusted_time[start_idx:end_idx]
 
     valid_idx = freq_slice > 0
     corrected_freq = np.nan  # default if no valid predictions
@@ -294,6 +329,45 @@ for n in notes_and_rests:
 
     print(f"Note: {n.nameWithOctave}, Target: {n.pitch.frequency:.2f} Hz, Median Detected: {corrected_freq:.2f} Hz, Cents: {note_cents:.2f}")
 
+measures = ", ".join(str(n) for n in measure_numbers)
+notes = ", ".join(str(n) for n in note_names)
+final_differences = ", ".join(str(n) for n in all_differences)
+final_times = ", ".join(str(n) for n in all_times)
+
+print(measures)
+print(notes)
+print(final_differences)
+print(final_times)
+
+prompt = f"""
+You are a music teacher analyzing a student’s recording.
+
+Here is the data:
+- Measures: {measures}
+- Notes: {notes}
+- Pitch differences (in cents, positive = sharp, negative = flat): {final_differences}
+- Timestamps (in seconds): {final_times}
+
+Each index corresponds to the same note. For example:
+Measure[i], Note[i], PitchDifference[i], Timestamp[i].
+
+Please:
+1. Identify notes that are significantly out of tune (greater than ±25 cents).
+2. Generate specific feedback in plain English:
+   - Note, timestamp, measure, sharp/flat
+   - Suggest what to practice
+3. End with an overall summary of their intonation.
+"""
+
+
+response = client.chat.completions.create(
+    model="gemini-1.5-flash",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt}
+    ])
+
+print(response.choices[0].message.content)
 
 def generate_feedback(measures, notes_list, cents_list, times_list, tolerance=25):
     # Dictionary (key is measure number, value is a list of mistakes for that measure)
@@ -372,7 +446,7 @@ def plot_pitch_comparison(crepe_times, crepe_freqs, note_times, note_freqs, corr
 
     plt.show()
 
-plot_pitch_comparison(filtered_time, filtered_freq, all_times, note_freqs, all_times, predicted_freqs)
+plot_pitch_comparison(adjusted_time, adjusted_freq, all_times, note_freqs, all_times, predicted_freqs)
 
 
 for n in notes_and_rests:
