@@ -6,20 +6,12 @@ import librosa
 import numpy as np
 import matplotlib.pyplot as plt
 from music21 import converter
-import random
 import os
 import logging
-import json
-import math
-# converter is module in music21 that parses scores from files
 import sys
-from scipy.interpolate import interp1d
-from scipy.signal import correlate
-
 import google.generativeai as genai
 
 genai.configure(api_key="AIzaSyBegRoTXaFwsjbEENHNFNqVpJ-uJmt-SHY")
-
 
 # Suppress TensorFlow / CREPE / matplotlib warnings and logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Hide TF debug logs
@@ -31,28 +23,6 @@ audio_path = sys.argv[2]
 tempo = int(sys.argv[3])
 
 import matplotlib.pyplot as plt
-
-# plot function
-def plot_alignment(filtered_time_before, filtered_freq, filtered_time_after, gt_times, gt_freqs):
-    plt.figure(figsize=(14, 6))
-
-    # Plot ground truth frequencies as a step function
-    plt.step(gt_times, gt_freqs, where='post', color="red", linewidth=2, label="Ground Truth (MusicXML)")
-
-    # Plot CREPE predictions BEFORE shift
-    plt.scatter(filtered_time_before, filtered_freq, color="blue", s=10, alpha=0.5, label="CREPE Before Alignment")
-
-    # Plot CREPE predictions AFTER shift
-    plt.scatter(filtered_time_after, filtered_freq, color="green", s=10, alpha=0.7, label="CREPE After Alignment")
-
-    # Labels & Legend
-    plt.title("Alignment of CREPE Predictions with Ground Truth")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Frequency (Hz)")
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
 
 # reads MusicXML file and turns it into Score object with notes, rests, measures
 # score (object, hierarchical) contains Parts (instruments/voices)
@@ -103,6 +73,7 @@ def cents_diff(f1, f2):
     return 1200 * np.log2(f1 / f2)
 
 diff_cents = np.abs(cents_diff(filtered_freq, first_note_freq))
+
 # Find first index where CREPE freq is within 100 cents of first note
 match_idx = np.where(diff_cents <= 100)[0]
 
@@ -136,26 +107,7 @@ reasoning_lines = []
 predicted_freqs = []
 note_freqs = []
 
-# Shifts the predicted frequency by octaves until it's closest to the target frequency.
-def correct_octave(pred_freq, target_freq):
-    # If CREPE outputs 0 (silence), just return 0
-    # if pred_freq <= 0:
-    #     return pred_freq
-
-    # while pred_freq > target_freq * 4:
-    #     pred_freq /= 2
-    # while pred_freq < target_freq / 4:
-    #     pred_freq *= 2
-    return pred_freq
-
-
 def process_note_frequencies(pred_freqs, target_freq):
-    # # apply correction to each CREPE prediction individually
-    # corrected = [correct_octave(f, target_freq) for f in pred_freqs if f > 0]
-
-    # if not corrected:
-    #     return None
-    # # should be (corrected) if want to work
     return np.median(pred_freqs)
 
 # n is one note (or chord) at a time
@@ -268,73 +220,6 @@ response = model.generate_content(prompt)
 
 print(response.text)
 
-
-# # Create the model (Gemini 1.5 Flash)
-# model = genai.GenerativeModel("models/gemini-2.5-flash")
-
-# messages = [
-#     {"role": "system", "content": "You are a helpful assistant."},
-#     {"role": "user", "content": prompt}
-# ]
-
-# # Combine user and system messages into one string for Gemini
-# prompt = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in messages])
-
-# # Generate the response
-# response = model.generate_content(prompt)
-
-# # Print the output
-# print(response.text)
-
-# def generate_feedback(measures, notes_list, cents_list, times_list, tolerance=25):
-#     # Dictionary (key is measure number, value is a list of mistakes for that measure)
-#     mistakes_by_measure = {}
-
-#     # Loop through every note
-#     for measure, note, cents, time in zip(measures, notes_list, cents_list, times_list):
-#         # Skip missing predictions
-#         if np.isnan(cents):
-#             continue
-
-#         # Classify in tune, sharp, flat
-#         if abs(cents) <= tolerance:
-#             continue
-#         elif cents > 0:
-#             tip_options = [
-#                 f"{note} was too sharp ({cents:.1f} cents) at {time:.2f}s - try lowering your finger slightly to bring the pitch down.",
-#                 f"{note} was sharp ({cents:.1f} cents) at {time:.2f}s - practice slowly with a tuner to center the pitch.",
-#             ]
-#         else:
-#             tip_options = [
-#                 f"{note} was too flat ({abs(cents):.1f} cents) at {time:.2f}s - try placing your finger slightly higher to raise the pitch.",
-#                 f"{note} was flat ({abs(cents):.1f} cents) at {time:.2f}s - practice sliding up to the correct pitch using a tuner.",
-#             ]
-
-#         # Randomly choose one of the two tips
-#         chosen_tip = random.choice(tip_options)
-
-#         # Group mistakes by measure
-#         if measure not in mistakes_by_measure:
-#             mistakes_by_measure[measure] = []
-#         mistakes_by_measure[measure].append(chosen_tip)
-
-#      # If there are no mistakes, give positive feedback
-#     if not mistakes_by_measure:
-#         return "Great job! All of your notes were in tune. Keep up the good work!"
-        
-#     # Build the final feedback string
-#     feedback = "Feedback:\n\n"
-#     for measure, mistakes in mistakes_by_measure.items():
-#         feedback += f"Measure {measure}:\n"
-#         for mistake in mistakes:
-#             feedback += f"  - {mistake}\n"
-#         feedback += "\n"
-
-#     return feedback
-
-# feedback = generate_feedback(measure_numbers, note_names, all_differences, all_times)
-# print("\n" + feedback + "\n\n")
-
 # print reasoning
 print("\n")
 print("Reasoning - Model output for each note:")
@@ -365,13 +250,3 @@ def plot_pitch_comparison(crepe_times, crepe_freqs, note_times, note_freqs, corr
     plt.show()
 
 plot_pitch_comparison(adjusted_time, adjusted_freq, all_times, note_freqs, all_times, predicted_freqs)
-
-
-for n in notes_and_rests:
-    if n.isRest:
-        print("rest")
-    else:
-        print(n.measureNumber, n.nameWithOctave, n.offset, n.quarterLength)
-
-
-
