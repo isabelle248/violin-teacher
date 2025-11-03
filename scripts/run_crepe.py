@@ -15,12 +15,11 @@ import math
 import sys
 from scipy.interpolate import interp1d
 from scipy.signal import correlate
-from openai import OpenAI
 
-client = OpenAI(
-    api_key="AIzaSyBegRoTXaFwsjbEENHNFNqVpJ-uJmt-SHY",
-    base_url="https://generativelanguage.googleapis.com/v1beta/"
-)
+import google.generativeai as genai
+
+genai.configure(api_key="AIzaSyBegRoTXaFwsjbEENHNFNqVpJ-uJmt-SHY")
+
 
 # Suppress TensorFlow / CREPE / matplotlib warnings and logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Hide TF debug logs
@@ -79,7 +78,7 @@ time, frequency, confidence, activation = crepe.predict(y, sr, step_size=7, mode
 # TIME SHIFT
 
 # filter out values that are less confident
-threshold = 0.9
+threshold = 0.8
 confident_idx = confidence > threshold
 filtered_time = time[confident_idx]
 filtered_freq = frequency[confident_idx]
@@ -123,107 +122,6 @@ valid_idx = filtered_time >= 0
 adjusted_time = filtered_time[valid_idx]
 adjusted_freq = filtered_freq[valid_idx]
 adjusted_conf = filtered_conf[valid_idx]
-
-
-
-
-# Compare predicted frequencies to ground truth
-
-
-# # Time alignment (shift CREPE predictions to best match ground truth)
-# gt_times_no_rests = []
-# gt_freqs_no_rests = []
-
-
-
-
-# OLD TIME SHIFT CODE
-# # store ground truth times and frequencies in arrays
-# for n in notes_and_rests:
-#     if n.isRest:
-#         continue
-
-#     if n.isChord:
-#         continue
-
-#     note_start = (n.offset / tempo) * 60
-#     freq = float(n.pitch.frequency)
-
-#     if not np.isnan(freq):
-#         gt_times_no_rests.append(note_start)
-#         gt_freqs_no_rests.append(freq)
-
-
-# # Convert to NumPy arrays for consistency
-# gt_times_no_rests = np.array(gt_times_no_rests, dtype=np.float64)
-# gt_freqs_no_rests = np.array(gt_freqs_no_rests, dtype=np.float64)
-
-# # Remove any NaNs, None, or invalid numbers
-# valid_mask = np.isfinite(gt_times_no_rests) & np.isfinite(gt_freqs_no_rests)
-# gt_times_no_rests = gt_times_no_rests[valid_mask]
-# gt_freqs_no_rests = gt_freqs_no_rests[valid_mask]
-
-# # Sort by time to ensure strictly increasing x-values for interp1d
-# sort_idx = np.argsort(gt_times_no_rests)
-# gt_times_no_rests = gt_times_no_rests[sort_idx]
-# gt_freqs_no_rests = gt_freqs_no_rests[sort_idx]
-
-
-# print("gt_times_no_rests dtype:", np.array(gt_times_no_rests).dtype)
-# print("gt_freqs_no_rests dtype:", np.array(gt_freqs_no_rests).dtype)
-
-# print("First few times:", gt_times_no_rests[:10])
-# print("First few freqs:", gt_freqs_no_rests[:10])
-
-# initial_latency = 0.5 
-# filtered_time = filtered_time + initial_latency
-
-
-# # create function to perform step interpolation
-# gt_interp = interp1d(
-#     gt_times_no_rests,
-#     gt_freqs_no_rests,
-#     kind="previous",
-#     bounds_error=False,
-#     fill_value="extrapolate"
-# )
-
-
-
-# # resample ground truth to match with CREPE time stamps
-# gt_resampled = gt_interp(filtered_time)
-
-# # use cross-correlation to find best time shift
-# # remove DC offset (constant bias), subtract mean to "center" around zero
-# crepe_centered = filtered_freq - np.mean(filtered_freq)
-# gt_centered = gt_resampled - np.mean(gt_resampled)
-
-# # compute cross correlation
-# corr = np.correlate(crepe_centered, gt_centered, mode="full")
-
-# # shift back to centered lag
-# lags = np.arange(-len(gt_centered) + 1, len(crepe_centered))
-
-# # convert lag to seconds
-# time_step = filtered_time[1] - filtered_time[0]
-# time_lags = lags * time_step
-
-# # restrict search
-# valid_idx = time_lags >= 0
-# corr = corr[valid_idx]
-# time_lags = time_lags[valid_idx]
-
-# # Save CREPE times BEFORE shifting
-# filtered_time_before = filtered_time.copy()
-
-# # apply time shift (update crepe timestamps)
-# best_shift = float(time_lags[np.argmax(corr)])
-# filtered_time = filtered_time + best_shift
-
-# print(f"Applied time shift: {best_shift:.3f} seconds")
-
-# # Visualize alignment
-# plot_alignment(filtered_time_before, filtered_freq, filtered_time, gt_times_no_rests, gt_freqs_no_rests)
 
 
 # create empty list, each item is a tuple (offset, note_frequency)
@@ -340,7 +238,7 @@ print(final_differences)
 print(final_times)
 
 prompt = f"""
-You are a music teacher analyzing a student’s recording.
+You are a violin teacher analyzing a student’s recording.
 
 Here is the data:
 - Measures: {measures}
@@ -354,71 +252,91 @@ Measure[i], Note[i], PitchDifference[i], Timestamp[i].
 Please:
 1. Identify notes that are significantly out of tune (greater than ±25 cents).
 2. Generate specific feedback in plain English:
-   - Note, timestamp, measure, sharp/flat
+   - Note that it was supposed to be, timestamp, measure, sharp/flat
    - Suggest what to practice
 3. End with an overall summary of their intonation.
+
+If there are no notes out of tune, give a positive and supporting message like "Great job! All of your notes were in tune, keep up the good work!"
+Don't make anything bolded.
 """
 
+# Create the Gemini model
+model = genai.GenerativeModel("models/gemini-2.5-flash")
 
-response = client.chat.completions.create(
-    model="gemini-1.5-flash",
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": prompt}
-    ])
+# Generate content
+response = model.generate_content(prompt)
 
-print(response.choices[0].message.content)
+print(response.text)
 
-def generate_feedback(measures, notes_list, cents_list, times_list, tolerance=25):
-    # Dictionary (key is measure number, value is a list of mistakes for that measure)
-    mistakes_by_measure = {}
 
-    # Loop through every note
-    for measure, note, cents, time in zip(measures, notes_list, cents_list, times_list):
-        # Skip missing predictions
-        if np.isnan(cents):
-            continue
+# # Create the model (Gemini 1.5 Flash)
+# model = genai.GenerativeModel("models/gemini-2.5-flash")
 
-        # Classify in tune, sharp, flat
-        if abs(cents) <= tolerance:
-            continue
-        elif cents > 0:
-            tip_options = [
-                f"{note} was too sharp ({cents:.1f} cents) at {time:.2f}s - try lowering your finger slightly to bring the pitch down.",
-                f"{note} was sharp ({cents:.1f} cents) at {time:.2f}s - practice slowly with a tuner to center the pitch.",
-            ]
-        else:
-            tip_options = [
-                f"{note} was too flat ({abs(cents):.1f} cents) at {time:.2f}s - try placing your finger slightly higher to raise the pitch.",
-                f"{note} was flat ({abs(cents):.1f} cents) at {time:.2f}s - practice sliding up to the correct pitch using a tuner.",
-            ]
+# messages = [
+#     {"role": "system", "content": "You are a helpful assistant."},
+#     {"role": "user", "content": prompt}
+# ]
 
-        # Randomly choose one of the two tips
-        chosen_tip = random.choice(tip_options)
+# # Combine user and system messages into one string for Gemini
+# prompt = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in messages])
 
-        # Group mistakes by measure
-        if measure not in mistakes_by_measure:
-            mistakes_by_measure[measure] = []
-        mistakes_by_measure[measure].append(chosen_tip)
+# # Generate the response
+# response = model.generate_content(prompt)
 
-     # If there are no mistakes, give positive feedback
-    if not mistakes_by_measure:
-        return "Great job! All of your notes were in tune. Keep up the good work!"
+# # Print the output
+# print(response.text)
+
+# def generate_feedback(measures, notes_list, cents_list, times_list, tolerance=25):
+#     # Dictionary (key is measure number, value is a list of mistakes for that measure)
+#     mistakes_by_measure = {}
+
+#     # Loop through every note
+#     for measure, note, cents, time in zip(measures, notes_list, cents_list, times_list):
+#         # Skip missing predictions
+#         if np.isnan(cents):
+#             continue
+
+#         # Classify in tune, sharp, flat
+#         if abs(cents) <= tolerance:
+#             continue
+#         elif cents > 0:
+#             tip_options = [
+#                 f"{note} was too sharp ({cents:.1f} cents) at {time:.2f}s - try lowering your finger slightly to bring the pitch down.",
+#                 f"{note} was sharp ({cents:.1f} cents) at {time:.2f}s - practice slowly with a tuner to center the pitch.",
+#             ]
+#         else:
+#             tip_options = [
+#                 f"{note} was too flat ({abs(cents):.1f} cents) at {time:.2f}s - try placing your finger slightly higher to raise the pitch.",
+#                 f"{note} was flat ({abs(cents):.1f} cents) at {time:.2f}s - practice sliding up to the correct pitch using a tuner.",
+#             ]
+
+#         # Randomly choose one of the two tips
+#         chosen_tip = random.choice(tip_options)
+
+#         # Group mistakes by measure
+#         if measure not in mistakes_by_measure:
+#             mistakes_by_measure[measure] = []
+#         mistakes_by_measure[measure].append(chosen_tip)
+
+#      # If there are no mistakes, give positive feedback
+#     if not mistakes_by_measure:
+#         return "Great job! All of your notes were in tune. Keep up the good work!"
         
-    # Build the final feedback string
-    feedback = "Feedback:\n\n"
-    for measure, mistakes in mistakes_by_measure.items():
-        feedback += f"Measure {measure}:\n"
-        for mistake in mistakes:
-            feedback += f"  - {mistake}\n"
-        feedback += "\n"
+#     # Build the final feedback string
+#     feedback = "Feedback:\n\n"
+#     for measure, mistakes in mistakes_by_measure.items():
+#         feedback += f"Measure {measure}:\n"
+#         for mistake in mistakes:
+#             feedback += f"  - {mistake}\n"
+#         feedback += "\n"
 
-    return feedback
+#     return feedback
 
-feedback = generate_feedback(measure_numbers, note_names, all_differences, all_times)
-print("\n" + feedback + "\n\n")
+# feedback = generate_feedback(measure_numbers, note_names, all_differences, all_times)
+# print("\n" + feedback + "\n\n")
 
 # print reasoning
+print("\n")
 print("Reasoning - Model output for each note:")
 print("=" * 40)
 print("\n".join(reasoning_lines))
@@ -428,13 +346,13 @@ def plot_pitch_comparison(crepe_times, crepe_freqs, note_times, note_freqs, corr
     plt.figure(figsize=(14, 6))
 
     # Plot CREPE predictions
-    plt.scatter(crepe_times, crepe_freqs, color="blue", s=8, alpha=0.6, label="CREPE Predicted Frequency")
+    plt.scatter(crepe_times, crepe_freqs, color="blue", s=8, alpha=0.6, label="CREPE Predicted Frequencies")
 
     # Plot target (sheet music) frequencies
     plt.scatter(note_times, note_freqs, color="red", s=50, marker="x", label="Target Note Frequencies")
 
     # Plot corrected crepe predictons
-    plt.scatter(corrected_times, corrected_freqs, color="green", s=50, marker="x", label="Corrected CREPE predictions")
+    plt.scatter(corrected_times, corrected_freqs, color="green", s=50, marker="x", label="Median of CREPE Predictions per note")
 
 
     # Make it pretty
