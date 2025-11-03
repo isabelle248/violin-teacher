@@ -23,6 +23,8 @@ Then, open the provided URL (usually http://localhost:3000/) in your browser.
 1) Choose your sheet music (.pdf) and violin recording (.wav) files
 2) Type in the tempo at which you played (in BPM)
 2) Press "Upload"
+<img width="524" height="312" alt="image" src="https://github.com/user-attachments/assets/e608e142-9c3e-4201-bc28-c1ef66a50b78" />
+
 
 ## Limitations
 * Currently supports local hosting only
