@@ -60,25 +60,20 @@ filtered_time = time[confident_idx]
 filtered_freq = frequency[confident_idx]
 filtered_conf = confidence[confident_idx]
 
+# # Visualize CREPE confidence vs. time
+# plt.figure(figsize=(12, 4))
 
-# Visualize CREPE confidence vs. time
-plt.figure(figsize=(12, 4))
+# plt.plot(time, confidence, label="CREPE Confidence", color="gray", alpha=0.6)
+# plt.scatter(filtered_time, filtered_conf, color="blue", s=10, label="Kept (confidence > threshold)")
 
-plt.plot(time, confidence, label="CREPE Confidence", color="gray", alpha=0.6)
-plt.scatter(filtered_time, filtered_conf, color="blue", s=10, label="Kept (confidence > threshold)")
+# plt.axhline(threshold, color="red", linestyle="--", label=f"Threshold = {threshold}")
 
-plt.axhline(threshold, color="red", linestyle="--", label=f"Threshold = {threshold}")
-
-plt.title("CREPE Confidence Over Time")
-plt.xlabel("Time (s)")
-plt.ylabel("Confidence")
-plt.legend()
-plt.grid(True)
-plt.show()
-
-# # Find first confident prediction
-# first_conf_idx = np.argmax(confidence > 0.8)
-# first_conf_time = time[first_conf_idx]
+# plt.title("CREPE Confidence Over Time")
+# plt.xlabel("Time (s)")
+# plt.ylabel("Confidence")
+# plt.legend()
+# plt.grid(True)
+# plt.show()
 
 #get first note
 first_note = None
@@ -121,8 +116,7 @@ adjusted_time = filtered_time[valid_idx]
 adjusted_freq = filtered_freq[valid_idx]
 adjusted_conf = filtered_conf[valid_idx]
 
-
-# create empty list, each item is a tuple (offset, note_frequency)
+# create empty list, each item is a tuple
 note_data = []
 all_differences = []
 all_times = []
@@ -133,6 +127,7 @@ cents_list = []
 reasoning_lines = []
 predicted_freqs = []
 note_freqs = []
+
 
 def process_note_frequencies(pred_freqs, target_freq):
     return np.median(pred_freqs)
@@ -169,7 +164,6 @@ for n in notes_and_rests:
 
     valid_idx = freq_slice > 0
     corrected_freq = np.nan  # default if no valid predictions
-
 
     # take median cents difference per note
     if np.any(valid_idx):
@@ -212,11 +206,7 @@ notes = ", ".join(str(n) for n in note_names)
 final_differences = ", ".join(str(n) for n in all_differences)
 final_times = ", ".join(str(n) for n in all_times)
 
-print(measures)
-print(notes)
-print(final_differences)
-print(final_times)
-
+# Prompt for feedback
 prompt = f"""
 You are a violin teacher analyzing a student’s recording.
 
@@ -243,7 +233,7 @@ Don't make anything bolded.
 # Create the Gemini model
 model = genai.GenerativeModel("models/gemini-2.5-flash")
 
-# Generate content
+# Generate feedback
 response = model.generate_content(prompt)
 
 print(response.text)
@@ -255,26 +245,25 @@ print("=" * 40)
 print("\n".join(reasoning_lines))
 print("=" * 40)
 
-def plot_pitch_comparison(crepe_times, crepe_freqs, note_times, note_freqs, corrected_times, corrected_freqs):
-    plt.figure(figsize=(14, 6))
+# # Visualize pitch comparison (between CREPE, correct pitches from Audiveris, and median of CREPE predictions)
+# def plot_pitch_comparison(crepe_times, crepe_freqs, note_times, note_freqs, corrected_times, corrected_freqs):
+#     plt.figure(figsize=(14, 6))
 
-    # Plot CREPE predictions
-    plt.scatter(crepe_times, crepe_freqs, color="blue", s=8, alpha=0.6, label="CREPE Predicted Frequencies")
+#     # Plot CREPE predictions
+#     plt.scatter(crepe_times, crepe_freqs, color="blue", s=8, alpha=0.6, label="CREPE Predicted Frequencies")
 
-    # Plot target (sheet music) frequencies
-    plt.scatter(note_times, note_freqs, color="red", s=50, marker="x", label="Target Note Frequencies")
+#     # Plot target (sheet music, Audiveris) frequencies
+#     plt.scatter(note_times, note_freqs, color="red", s=50, marker="x", label="Target Note Frequencies")
 
-    # Plot corrected crepe predictons
-    plt.scatter(corrected_times, corrected_freqs, color="green", s=50, marker="x", label="Median of CREPE Predictions per note")
+#     # Plot median of crepe predictons
+#     plt.scatter(corrected_times, corrected_freqs, color="green", s=50, marker="x", label="Median of CREPE Predictions per note")
 
+#     plt.title("Pitch Tracking: CREPE Predictions vs. Target Notes")
+#     plt.xlabel("Time (s)")
+#     plt.ylabel("Frequency (Hz)")
+#     plt.legend()
+#     plt.grid(True)
 
-    # Make it pretty
-    plt.title("Pitch Tracking: CREPE Predictions vs. Target Notes")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Frequency (Hz)")
-    plt.legend()
-    plt.grid(True)
+#     plt.show()
 
-    plt.show()
-
-plot_pitch_comparison(adjusted_time, adjusted_freq, all_times, note_freqs, all_times, predicted_freqs)
+# plot_pitch_comparison(adjusted_time, adjusted_freq, all_times, note_freqs, all_times, predicted_freqs)

@@ -12,18 +12,19 @@ This project detects intonation errors in violin recordings. It analyzes input a
 
 ## Requirements
 * Python 3.9+
-* crepe, librosa, numpy, matplotlib.pyplot, converter (from music21), os, logging, sys, google.generativeai
+* crepe, librosa, numpy, matplotlib, music21, scipy, python-dotenv, google-generativeai
 
 ## Installation
 1. Clone the repository
 
 ```
 bash
-git clone https://github.com/yourusername/violin-intonation.git
-cd violin-intonation
+git clone https://github.com/isabelle248/polygence-website.git
+cd polygence-website
 ```
 
 2. Install dependencies using requirements.txt
+
 `pip install -r requirements.txt`
 
 ## Setup
