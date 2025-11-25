@@ -1,0 +1,75 @@
+2025-11-10 17:38:15,802 ERROR [1762825093119]              IOUtils.java:278  | Unmapping is not supported.
+java.lang.reflect.InaccessibleObjectException: Unable to make public jdk.internal.ref.Cleaner java.nio.DirectByteBuffer.cleaner() accessible: module java.base does not "opens java.nio" to unnamed module @41fbdac4
+	at java.base/java.lang.reflect.AccessibleObject.throwInaccessibleObjectException(Unknown Source)
+	at java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(Unknown Source)
+	at java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(Unknown Source)
+	at java.base/java.lang.reflect.Method.checkCanSetAccessible(Unknown Source)
+	at java.base/java.lang.reflect.Method.setAccessible(Unknown Source)
+	at org.apache.pdfbox.io.IOUtils.unmapper(IOUtils.java:244)
+	at java.base/java.security.AccessController.doPrivileged(Unknown Source)
+	at org.apache.pdfbox.io.IOUtils.<clinit>(IOUtils.java:69)
+	at org.apache.pdfbox.Loader.loadPDF(Loader.java:378)
+	at org.audiveris.omr.image.ImageLoading.getPdfLoader(ImageLoading.java:159)
+	at org.audiveris.omr.image.ImageLoading.getLoader(ImageLoading.java:209)
+	at org.audiveris.omr.sheet.Book.createStubs(Book.java:557)
+	at org.audiveris.omr.CLI$ProcessingTask.processBook(CLI.java:830)
+	at org.audiveris.omr.CLI$CliTask.call(CLI.java:504)
+	at org.audiveris.omr.Main.runBatchTasks(Main.java:371)
+	at org.audiveris.omr.Main.main(Main.java:260)
+	at Audiveris.main(Audiveris.java:50)
+2025-11-10 17:38:15,853 INFO [1762825093119]                 Book.java:562  | 1 sheet in /Users/isabellelin/Documents/polygence-website/uploads/1762825093119.pdf
+2025-11-10 17:38:15,953 INFO []                 Book.java:2531 | Stored /book.xml
+2025-11-10 17:38:15,953 INFO []                 Book.java:2491 | Book stored as /Users/isabellelin/Documents/polygence-website/uploads/1762825093119.omr
+2025-11-10 17:38:15,956 INFO []                 Book.java:1933 | Book reaching PAGE on sheets:[#1]
+2025-11-10 17:38:15,957 INFO [1762825093119]       StepMonitoring.java:98   | LOAD
+2025-11-10 17:38:16,166 INFO [1762825093119]            SheetStub.java:1268 | Loaded image #1 2550x3299 from /Users/isabellelin/Documents/polygence-website/uploads/1762825093119.pdf
+2025-11-10 17:38:16,168 INFO [1762825093119]       StepMonitoring.java:98   | BINARY
+2025-11-10 17:38:16,496 INFO [1762825093119]       StepMonitoring.java:98   | SCALE
+2025-11-10 17:38:16,504 INFO [1762825093119]         ScaleBuilder.java:241  | Beam  guessed height: 10 -- 0.50 of 21 interline
+2025-11-10 17:38:16,505 INFO [1762825093119]         ScaleBuilder.java:264  | Beam measured height: 10 -- 0.27 of [6..21] range at 239% of needed quorum
+2025-11-10 17:38:16,506 INFO [1762825093119]            ScaleStep.java:65   | Scale{ interline(20,21,21) line(2,2,2) beam(10)}
+2025-11-10 17:38:16,506 INFO [1762825093119]       StepMonitoring.java:98   | GRID
+2025-11-10 17:38:16,710 INFO [1762825093119]       LinesRetriever.java:1500 | Global slope: 0.00000
+2025-11-10 17:38:16,718 INFO [1762825093119]    ClustersRetriever.java:328  | Retrieved raw line clusters: 1 of sizes [5] with interline(20,21,21)
+2025-11-10 17:38:16,742 INFO [1762825093119]            PeakGraph.java:310  | Systems: #1[1]
+2025-11-10 17:38:16,850 INFO [1762825093119]        SystemManager.java:779  | 1 part along 1 system
+2025-11-10 17:38:16,850 INFO [1762825093119]                 Book.java:545  | Created scores: [{Score 1}]
+2025-11-10 17:38:16,850 INFO [1762825093119]       StepMonitoring.java:98   | HEADERS
+2025-11-10 17:38:17,027 INFO [1762825093119]      BasicClassifier.java:277  | Classifier loaded XML norms.
+2025-11-10 17:38:17,028 INFO [1762825093119]   AbstractClassifier.java:396  | Classifier data loaded from default uri jar:file:/Applications/Audiveris.app/Contents/app/audiveris.jar!/res/basic-classifier.zip
+2025-11-10 17:38:17,495 INFO [1762825093119]       StepMonitoring.java:98   | STEM_SEEDS
+2025-11-10 17:38:17,525 INFO [1762825093119]        StemSeedsStep.java:86   | stem(2 max:2)
+2025-11-10 17:38:17,536 INFO [1762825093119]       StepMonitoring.java:98   | BEAMS
+2025-11-10 17:38:21,320 INFO [1762825093119]       StepMonitoring.java:98   | LEDGERS
+2025-11-10 17:38:21,467 INFO [1762825093119]       StepMonitoring.java:98   | HEADS
+2025-11-10 17:38:22,735 INFO [1762825093119]        HeadSeedTally.java:235  | Scale information: HeadSeeds{NOTEHEAD_BLACK[L:-0.5,R:-0.5]}
+2025-11-10 17:38:22,736 INFO [1762825093119]       StepMonitoring.java:98   | STEMS
+2025-11-10 17:38:22,913 INFO [1762825093119]       StepMonitoring.java:98   | REDUCTION
+2025-11-10 17:38:22,956 INFO [1762825093119]        ReductionStep.java:105  | Stems free length median value: 67 pixels, 3.2 interlines
+2025-11-10 17:38:22,959 INFO [1762825093119]       StepMonitoring.java:98   | CUE_BEAMS
+2025-11-10 17:38:22,960 INFO [1762825093119]         CueBeamsStep.java:81   | Step CUE_BEAMS is skipped because small heads switch is off
+2025-11-10 17:38:22,961 INFO [1762825093119]       StepMonitoring.java:98   | TEXTS
+2025-11-10 17:38:23,097 WARN [1762825093119]         TesseractOCR.java:335  | The collection of supported languages is empty
+2025-11-10 17:38:23,098 INFO [1762825093119]              OcrUtil.java:106  | Missing support for 'eng' language(s)
+2025-11-10 17:38:23,115 INFO [1762825093119]       StepMonitoring.java:98   | MEASURES
+2025-11-10 17:38:23,128 INFO [1762825093119]                 Page.java:307  | 8 raw measures: [8 in system#1]
+2025-11-10 17:38:23,128 INFO [1762825093119]       StepMonitoring.java:98   | CHORDS
+2025-11-10 17:38:23,143 INFO [1762825093119]       StepMonitoring.java:98   | CURVES
+2025-11-10 17:38:24,181 INFO [1762825093119]         SlursBuilder.java:240  | Slurs: 0
+2025-11-10 17:38:24,185 INFO [1762825093119]      SegmentsBuilder.java:155  | Segments: 3
+2025-11-10 17:38:24,187 INFO [1762825093119]       StepMonitoring.java:98   | SYMBOLS
+2025-11-10 17:38:24,331 INFO [1762825093119]       StepMonitoring.java:98   | LINKS
+2025-11-10 17:38:24,341 INFO [1762825093119]       StepMonitoring.java:98   | RHYTHMS
+2025-11-10 17:38:24,359 INFO [1762825093119]       StepMonitoring.java:98   | PAGE
+2025-11-10 17:38:24,362 INFO [1762825093119]                 Book.java:2550 | Book{1762825093119} storing
+2025-11-10 17:38:24,383 INFO [1762825093119]                 Book.java:2531 | Stored /book.xml
+2025-11-10 17:38:24,535 INFO [1762825093119]           DataHolder.java:348  | Stored /sheet#1/BINARY.png
+2025-11-10 17:38:24,818 INFO [1762825093119]                Sheet.java:1562 | Stored /sheet#1/sheet#1.xml
+2025-11-10 17:38:24,819 INFO [1762825093119]                 Book.java:2491 | Book stored as /Users/isabellelin/Documents/polygence-website/uploads/1762825093119.omr
+2025-11-10 17:38:24,822 INFO [1762825093119]            SheetStub.java:1644 | Disposed sheet
+2025-11-10 17:38:24,908 INFO [1762825093119]                 Book.java:2018 | End of Stub#1 memory: 36,263,488
+2025-11-10 17:38:24,909 INFO [1762825093119]                 Book.java:2025 | Book processed.
+2025-11-10 17:38:25,402 INFO [1762825093119]            SheetStub.java:995  | Loaded /sheet#1/sheet#1.xml
+2025-11-10 17:38:25,773 INFO [1762825093119]      PartwiseBuilder.java:2661 | Exporting sheet(s): [#1]
+2025-11-10 17:38:25,824 INFO [1762825093119]        ScoreExporter.java:164  | Score 1762825093119 exported to /Users/isabellelin/Documents/polygence-website/uploads/1762825093119.mxl
+2025-11-10 17:38:25,854 INFO [1762825093119]                Score.java:181  | Closing {Score 1}

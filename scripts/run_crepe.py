@@ -10,8 +10,14 @@ import os
 import logging
 import sys
 import google.generativeai as genai
+from scipy.stats import mode
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-genai.configure(api_key="AIzaSyBegRoTXaFwsjbEENHNFNqVpJ-uJmt-SHY")
+key = os.getenv("GEMINI_API_KEY")
+
+genai.configure(api_key=key)
 
 # Suppress TensorFlow / CREPE / matplotlib warnings and logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Hide TF debug logs
@@ -48,11 +54,27 @@ time, frequency, confidence, activation = crepe.predict(y, sr, step_size=7, mode
 # TIME SHIFT
 
 # filter out values that are less confident
-threshold = 0.8
+threshold = 0.75
 confident_idx = confidence > threshold
 filtered_time = time[confident_idx]
 filtered_freq = frequency[confident_idx]
 filtered_conf = confidence[confident_idx]
+
+
+# Visualize CREPE confidence vs. time
+plt.figure(figsize=(12, 4))
+
+plt.plot(time, confidence, label="CREPE Confidence", color="gray", alpha=0.6)
+plt.scatter(filtered_time, filtered_conf, color="blue", s=10, label="Kept (confidence > threshold)")
+
+plt.axhline(threshold, color="red", linestyle="--", label=f"Threshold = {threshold}")
+
+plt.title("CREPE Confidence Over Time")
+plt.xlabel("Time (s)")
+plt.ylabel("Confidence")
+plt.legend()
+plt.grid(True)
+plt.show()
 
 # # Find first confident prediction
 # first_conf_idx = np.argmax(confidence > 0.8)
@@ -82,11 +104,16 @@ if len(match_idx) == 0:
 else:
     first_match_time = filtered_time[match_idx[0]]
     print(f"First CREPE match for {first_note.nameWithOctave} at {first_match_time:.3f} s")
+    print(first_match_time)
 
-
+print(filtered_time)
 filtered_time = filtered_time - first_match_time
+print(filtered_time)
 
 print(f"Shifted CREPE times so first note starts at 0 (shift = {first_match_time:.3f} sec)")
+print("match_idx: " + str(match_idx[0]))
+print("diff_cents: " + str(diff_cents))
+print("first_note_freq: " + str(first_note_freq))
 
 # adjust so no zero values
 valid_idx = filtered_time >= 0
@@ -109,6 +136,7 @@ note_freqs = []
 
 def process_note_frequencies(pred_freqs, target_freq):
     return np.median(pred_freqs)
+    
 
 # n is one note (or chord) at a time
 for n in notes_and_rests:
@@ -137,7 +165,7 @@ for n in notes_and_rests:
     freq_slice = (adjusted_freq[start_idx:end_idx])
 
     # slice time
-    time_slice = adjusted_time[start_idx:end_idx]
+    time_slice = (adjusted_time[start_idx:end_idx])
 
     valid_idx = freq_slice > 0
     corrected_freq = np.nan  # default if no valid predictions

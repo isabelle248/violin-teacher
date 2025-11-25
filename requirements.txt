@@ -3,3 +3,6 @@ librosa
 numpy
 matplotlib
 music21
+scipy
+python-dotenv
+google-generativeai
