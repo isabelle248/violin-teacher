@@ -1,8 +1,8 @@
 # violin-teacher
 
-This project detects intonation errors in violin recordings. It analyzes input audio (from a recorded file) and provides feedback on how sharp or flat the played pitch is compared to the target frequency, as well as tips on how the user can practice.
+This project detects intonation errors in violin recordings. It analyzes input audio (from a recorded file) and provides feedback on how sharp or flat the played pitch is compared to the target frequency, as well as tips on how the user can practice. 
 
-Link to Research Paper: 
+Link to research paper: https://dpl6hyzg28thp.cloudfront.net/media/Learning_to_Listen__Machine_Learning_for_Intonation_Error_Detection_in_Violin_Performance.pdf
 
 ---
 
